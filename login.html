@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lost n Found - Login</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+    }
+
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    /* nav: left group (add, search) / right group (logout, mypage) */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    nav a {
+      margin-right: 12px;
+    }
+
+    nav .nav-right a {
+      margin-right: 0;
+      margin-left: 12px;
+    }
+
+    main {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+    }
+
+    #login-message {
+      margin-top: 12px;
+    }
+
+    .success { color: green; }
+    .error { color: red; }
+
+    /* Add / Search buttons, only shown after login */
+    #action-buttons {
+      display: none;
+      margin-top: 24px;
+    }
+
+    #action-buttons button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>lostnfound</h1>
+    <nav>
+      <div class="nav-left">
+        <a href="add.html">add</a>
+        <a href="search.html">search</a>
+      </div>
+      <div class="nav-right">
+        <a href="logout.html">logout</a>
+        <a href="mypage.html">mypage</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section id="login">
+      <h2>Log-in</h2>
+
+      <section id="login-description">
+        <p>Please log in with your school email and password.</p>
+      </section>
+
+      <form id="login-form">
+        <div>
+          <label for="email">ID (school email)</label><br>
+          <input type="email" id="email" name="email" placeholder="example@school.ac.kr" required>
+        </div>
+        <br>
+        <div>
+          <label for="password">PASSWORD</label><br>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <br>
+        <button type="submit">SUBMIT</button>
+      </form>
+
+      <!-- Login result message (below the SUBMIT button) -->
+      <p id="login-message"></p>
+    </section>
+
+    <!-- Add / Search buttons, shown after a successful login -->
+    <section id="action-buttons">
+      <button type="button" onclick="location.href='add.html'">Add</button>
+      <button type="button" onclick="location.href='search.html'">Search</button>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Gitastic5. All rights reserved.</p>
+  </footer>
+
+  <!-- Supabase JS library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // TODO: Replace with our project's values (use the Publishable Key, NEVER the Secret Key!)
+    const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+    const SUPABASE_KEY = 'YOUR-PUBLISHABLE-KEY';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // TODO: Replace with our school email domain
+    const SCHOOL_DOMAIN = '@school.ac.kr';
+
+    const form = document.getElementById('login-form');
+    const message = document.getElementById('login-message');
+    const actionButtons = document.getElementById('action-buttons');
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = type;
+    }
+
+    function showActionButtons() {
+      actionButtons.style.display = 'block';
+    }
+
+    // If the user is already logged in, show the Add / Search buttons right away
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        showMessage('You are already logged in.', 'success');
+        showActionButtons();
+      }
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); // Prevent the page from reloading on submit
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      // Only allow school email addresses
+      if (!email.endsWith(SCHOOL_DOMAIN)) {
+        showMessage('Only school email addresses (' + SCHOOL_DOMAIN + ') can be used to log in.', 'error');
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showMessage('Login failed. Please check your email and password.', 'error');
+      } else {
+        showMessage('Login successful!', 'success');
+        showActionButtons();
+      }
+    });
+  </script>
+</body>
+</html>
