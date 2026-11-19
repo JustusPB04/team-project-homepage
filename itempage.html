@@ -1,0 +1,364 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item Details | LostnFound</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #222;
+            background: #fff;
+        }
+
+        header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav a {
+            margin-right: 14px;
+            color: #333;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        nav a:last-child {
+            margin-right: 0;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 24px 0;
+            font-size: 28px;
+        }
+
+        main {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .item-image {
+            width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            background: #f5f5f5;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .item-info {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .item-info h2 {
+            margin-top: 0;
+        }
+
+        .info-row {
+            margin: 16px 0;
+            line-height: 1.5;
+        }
+
+        .info-label {
+            display: block;
+            font-size: 13px;
+            color: #777;
+            margin-bottom: 4px;
+        }
+
+        #foundButton {
+            width: 100%;
+            padding: 14px;
+            margin-top: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #foundButton:hover {
+            background: #555;
+        }
+
+        #message {
+            text-align: center;
+            color: #666;
+            margin: 20px 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 16px;
+            color: #666;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <div>
+                <a href="add.html">Add</a>
+                <a href="search.html">Search</a>
+            </div>
+
+            <div>
+                <a href="#" id="logoutButton">Logout</a>
+                <a href="mypage.html">My Page</a>
+            </div>
+        </nav>
+    </header>
+
+    <h1>lostnfound</h1>
+
+    <main>
+        <div id="message">Loading item details...</div>
+
+        <div id="itemContainer" style="display: none;">
+
+            <div id="imageContainer"></div>
+
+            <section class="item-info">
+                <h2 id="itemName"></h2>
+
+                <div class="info-row">
+                    <span class="info-label">Category</span>
+                    <span id="itemCategory"></span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Description</span>
+                    <span id="itemDescription"></span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Date Found</span>
+                    <span id="foundDate"></span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Location Found</span>
+                    <span id="foundLocation"></span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Pickup Method</span>
+                    <span id="pickupMethod"></span>
+                </div>
+
+                <button id="foundButton">Found / Mark as Returned</button>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        © 2026 Gitastic5. All rights reserved.
+    </footer>
+
+    <!-- Supabase connection -->
+    <!-- This page expects supabase.js to provide supabaseClient. -->
+    <script src="supabase.js"></script>
+
+    <script>
+        const itemId = new URLSearchParams(
+            window.location.search
+        ).get("id");
+
+        const message = document.getElementById("message");
+        const itemContainer = document.getElementById("itemContainer");
+        const foundButton = document.getElementById("foundButton");
+
+        async function loadItem() {
+            if (!itemId) {
+                message.textContent = "No item was selected.";
+                return;
+            }
+
+            if (typeof supabaseClient === "undefined") {
+                message.textContent =
+                    "Supabase connection is not available yet.";
+                return;
+            }
+
+            // Check login status
+            const { data: sessionData, error: sessionError } =
+                await supabaseClient.auth.getSession();
+
+            if (sessionError || !sessionData.session) {
+                window.location.href = "index.html";
+                return;
+            }
+
+            // Get item information
+            const { data: item, error } = await supabaseClient
+                .from("items")
+                .select(`
+                    id,
+                    name,
+                    description,
+                    found_date,
+                    found_location,
+                    pickup_method,
+                    categories(name),
+                    item_images(storage_path)
+                `)
+                .eq("id", itemId)
+                .single();
+
+            if (error || !item) {
+                message.textContent = "Item not found.";
+                console.error(error);
+                return;
+            }
+
+            // Display item information
+            document.getElementById("itemName").textContent =
+                item.name || "No name";
+
+            document.getElementById("itemCategory").textContent =
+                item.categories?.name || "Not specified";
+
+            document.getElementById("itemDescription").textContent =
+                item.description || "No description";
+
+            document.getElementById("foundDate").textContent =
+                item.found_date || "Not specified";
+
+            document.getElementById("foundLocation").textContent =
+                item.found_location || "Not specified";
+
+            document.getElementById("pickupMethod").textContent =
+                item.pickup_method || "Not specified";
+
+            // Display private images using signed URLs
+            const imageContainer =
+                document.getElementById("imageContainer");
+
+            imageContainer.innerHTML = "";
+
+            for (const image of (item.item_images || [])) {
+                const { data: imageData, error: imageError } =
+                    await supabaseClient.storage
+                        .from("item-images")
+                        .createSignedUrl(image.storage_path, 3600);
+
+                if (imageError || !imageData) {
+                    console.error(imageError);
+                    continue;
+                }
+
+                const img = document.createElement("img");
+                img.src = imageData.signedUrl;
+                img.alt = item.name;
+                img.className = "item-image";
+
+                imageContainer.appendChild(img);
+            }
+
+            message.style.display = "none";
+            itemContainer.style.display = "block";
+
+            // Mark item as returned
+            foundButton.onclick = async function () {
+                const confirmed = confirm(
+                    "Has this item been returned? The item will be deleted."
+                );
+
+                if (!confirmed) return;
+
+                foundButton.disabled = true;
+                foundButton.textContent = "Processing...";
+
+                // Get image paths before deleting the item
+                const { data: images, error: imageError } =
+                    await supabaseClient
+                        .from("item_images")
+                        .select("storage_path")
+                        .eq("item_id", itemId);
+
+                if (imageError) {
+                    alert("Could not retrieve item images.");
+                    foundButton.disabled = false;
+                    foundButton.textContent = "Found / Mark as Returned";
+                    return;
+                }
+
+                // Delete actual files from Storage
+                const paths = (images || []).map(
+                    image => image.storage_path
+                );
+
+                if (paths.length > 0) {
+                    const { error: storageError } =
+                        await supabaseClient.storage
+                            .from("item-images")
+                            .remove(paths);
+
+                    if (storageError) {
+                        alert("Could not delete item images.");
+                        console.error(storageError);
+                        foundButton.disabled = false;
+                        foundButton.textContent =
+                            "Found / Mark as Returned";
+                        return;
+                    }
+                }
+
+                // Delete item record
+                const { error: deleteError } =
+                    await supabaseClient
+                        .from("items")
+                        .delete()
+                        .eq("id", itemId);
+
+                if (deleteError) {
+                    alert("Could not mark the item as returned.");
+                    console.error(deleteError);
+                    foundButton.disabled = false;
+                    foundButton.textContent =
+                        "Found / Mark as Returned";
+                    return;
+                }
+
+                alert("The item has been marked as returned.");
+                window.location.href = "search.html";
+            };
+        }
+
+        // Logout
+        document.getElementById("logoutButton").onclick =
+            async function (event) {
+                event.preventDefault();
+
+                if (typeof supabaseClient === "undefined") return;
+
+                await supabaseClient.auth.signOut();
+                window.location.href = "index.html";
+            };
+
+        loadItem();
+    </script>
+
+</body>
+</html>
